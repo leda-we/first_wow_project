@@ -16,7 +16,7 @@ text=StringVar()
 name=StringVar()
 name.set('You')
 text.set('')
-tk.title('MegaChat')
+tk.title('EEEE')
 tk.geometry('400x300')
 
 log = Text(tk)
