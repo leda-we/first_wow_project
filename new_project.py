@@ -2,11 +2,6 @@ import socket
 from tkinter import *
 
 
-#Решаем вопрос с кирилицей
-# reload(sys)
-# sys.setdefaultencoding('utf-8')
-# -----------------------------
-
 tk=Tk()
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -36,7 +31,7 @@ def loopproc():
 	s.setblocking(False)
 	try:
 		message = s.recv(128)
-		message = message.decode('utf-8')  # для Python 3 
+		message = message.decode('utf-8') 
 		log.insert(END,message+'\n')
 	except:
 		tk.after(1,loopproc)
