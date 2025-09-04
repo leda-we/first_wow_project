@@ -21,6 +21,7 @@ tk.geometry('400x300')
 
 log = Text(tk)
 nick = Entry(tk, textvariable=name)
+nick.config(state='disabled')
 msg = Entry(tk, textvariable=text)
 msg.pack(side='bottom', fill='x', expand='true')
 nick.pack(side='bottom', fill='x', expand='true')
