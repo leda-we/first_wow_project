@@ -1,7 +1,24 @@
 import socket
 from tkinter import *
 
+# import os
+# from dotenv import load_dotenv
+# from openai import OpenAI
+# load_dotenv()
 
+# LM_BASE_URL = os.getenv("LM_BASE_URL", "http://localhost:1234/v1")
+# LM_MODEL = os.getenv("LM_MODEL", "lmstudio-community/llama-3.1-8b-instruct")
+# LM_API_KEY = os.getenv("LM_API_KEY", "lm-studio")
+
+# client = OpenAI(base_url=LM_BASE_URL, api_key=LM_API_KEY)
+
+# def ai_reply(messages):
+# 	response = client.chat.completions.create(
+# 		model=LM_MODEL,
+# 		messages=messages,
+# 		temperature=0.7,
+# 	)
+# 	return response.choices[0].message.content.strip()
 tk=Tk()
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -48,6 +65,20 @@ def sendproc(event):
         text.set('')
         return 'break'
     
+# if __name__ == "__main__":
+# 	print("Чат с ИИ (LM Studio). Напишите 'выход' для завершения.")
+# 	dialog = [
+# 		{"role": "system", "content": "Ты дружелюбный помощник и отвечаешь кратко на русском."}
+# 	]
+# 	while True:
+# 		user_text = input("Вы: ").strip()
+# 		if user_text.lower() in {"выход", "exit", "quit"}:
+# 			print("Пока!")
+# 			break
+# 		dialog.append({"role": "user", "content": user_text})
+# 		answer = ai_reply(dialog)
+# 		print(f"ИИ: {answer}")
+# 		dialog.append({"role": "assistant", "content": answer})
 
 msg.bind('<KeyPress>',sendproc)   
 
