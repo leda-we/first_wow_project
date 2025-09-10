@@ -8,9 +8,9 @@ import threading
 import time
 import requests
 from bs4 import BeautifulSoup
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 import json
-
+import socket; socket.gethostbyname("duckduckgo.com")
 
 def search_internet(query, max_results=3):
 	try:
@@ -199,7 +199,7 @@ def get_ai_response(user_text):
         typing_thread = threading.Thread(target=show_typing_indicator, daemon=True)
         typing_thread.start()
         
-        search_keywords = ['что такое', 'как работает', 'объясни', 'расскажи о', 'информация о', 'что значит']
+        search_keywords = ['что такое', 'как работает', 'объясни', 'расскажи о', 'расскажи про' 'информация о', 'что значит', 'кто такой']
         needs_search = any(keyword in user_text.lower() for keyword in search_keywords)
 
         context = ''
@@ -235,6 +235,7 @@ def get_ai_response(user_text):
         log.insert(END, ai_message + '\n')
         log.see(END)
         
+
     except Exception as e:
         log.delete("end-2c", END)
         error_message = f"Ошибка ИИ: {str(e)}"
