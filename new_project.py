@@ -1,15 +1,16 @@
 import socket
 from tkinter import *
-
+import customtkinter as ctk
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
 import threading
-import time
-import requests
-from bs4 import BeautifulSoup
 from ddgs import DDGS
 import json
+
+ctk.set_appearance_mode('dark')
+ctk.set_default_color_theme('blue')
+
 
 dialog_history = [
 	{"role": "system", "content": "Ты дружелюбный помощник и отвечаешь на русском. Держи нить разговора; если пользователь просит 'расскажи больше', продолжай тему последнего обсуждаемого объекта без смены темы."}
@@ -19,6 +20,8 @@ current_subject = ""    # текущая тема/объект
 MAX_TURNS = 12          # сколько последних реплик держать в окне (user+assistant)
 SUMMARY_EVERY = 6       # каждые N пользовательских сообщений обновлять выжимку
 user_turns_count = 0
+last_user_text = ""
+last_ai_answer = ""
 def search_internet(query, max_results=3):
     try:
         results = []
@@ -112,6 +115,24 @@ LM_MODEL = os.getenv("LM_MODEL", "lmstudio-community/llama-3.1-8b-instruct")
 LM_API_KEY = os.getenv("LM_API_KEY", "lm-studio")
 
 client = OpenAI(base_url=LM_BASE_URL, api_key=LM_API_KEY)
+def ai_reply(messages, temperature=0.5, top_p=0.9, max_tokens=256):
+    try:
+        response = client.chat.completions.create(
+            model=LM_MODEL,
+            messages=messages,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            stream=False,
+        )
+        choice = response.choices[0]
+        # OpenAI SDK returns either .message or .delta depending on stream
+        content = getattr(choice.message, "content", None)
+        if content is None and isinstance(choice, dict):
+            content = choice.get("message", {}).get("content")
+        return (content or "").strip()
+    except Exception as e:
+        return f"[Ошибка при обращении к модели: {e}]"
 def test_lm_studio():
     try:
         response = client.chat.completions.create(
@@ -124,13 +145,22 @@ def test_lm_studio():
     except Exception as e:
         print(f"Ошибка подключения к LM Studio: {e}")
         return False
-
+def on_add_to_knowledge():
+    q = (last_user_text or "").strip()
+    a = (last_user_text or "").strip()
+    if not q or not a:
+        log.insert(END, 'Нет данных для сохранения. Сначала задайте вопрос и дождитесь ответа.\n')
+        log.see(END)
+        return
+    add_to_knowledge_base(title=q, content=a)
+    log.insert(END, f'Сохранено в базу: {q[:40]}...\n')
+    log.see(END)
 
 if not test_lm_studio():
     print("Проверьте, что LM Studio запущен!")
 
 
-tk=Tk()
+tk = ctk.CTk()
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -154,28 +184,41 @@ if not os.path.exists('local_knowledge.json'):
 	create_local_knowledge_base()
 
 
-log = Text(tk)
+log = ctk.CTkTextbox(tk)
 typing_var = StringVar(value="")
-typing_label = Label(tk, textvariable=typing_var, anchor='w')
+typing_label = ctk.CTkLabel(tk, textvariable=typing_var, anchor='w')
 typing_label.pack(side='bottom', fill='x')
-nick = Entry(tk, textvariable=name)
-nick.config(state='disabled')
-msg = Entry(tk, textvariable=text)
+msg = ctk.CTkEntry(tk, textvariable=text)
 msg.pack(side='bottom', fill='x', expand='true')
-nick.pack(side='bottom', fill='x', expand='true')
+save_btn = ctk.CTkButton(tk, 
+    text='Добавить в базу знаний', 
+    command=on_add_to_knowledge,
+    corner_radius=12,              # округление
+    width=140,                     # компактная ширина
+    height=32,                     # компактная высота
+    fg_color="#2b8a3e",            # основной цвет (зелёный)
+    hover_color="#237032",         # цвет наведения
+    text_color="white")
+save_btn.pack(side='bottom', padx = 10, pady = 6)
 log.pack(side='top', fill='both',expand='true')
+log.configure(height = 20)
+msg.configure(height = 30)
+
 
 
 
 def sendproc(event):
     
     if event.keysym == 'Return':
-        global current_subject
+        global current_subject, last_user_text
         user_text = text.get()
-        user_message = name.get() + ':' + user_text
+        user_message = name.get() + ': ' + user_text
         sock.sendto(user_message.encode('utf-8'), ('255.255.255.255', 11719))
+        if not user_text.strip():
+            return 'break'
+        last_user_text = user_text
 
-        if len(user_text) >= 3:
+        if len(user_text.strip()) >= 3:
             current_subject = user_text
 
         dialog_history.append({'role': 'user', 'content': user_text})
@@ -215,9 +258,9 @@ def stop_typing_and_show(answer_text):
         log.delete("end-2l", "end-1l")
     except:
         pass
-    log.insert(END, "\n" + f"ИИ: {answer_text}\n")
+    log.insert(END, "\n" )
     log.see(END)
-
+# + f"ИИ: {answer_text}\n"
 def stop_typing_and_show_error(e):
     global typing_running
     typing_running = False
@@ -265,7 +308,8 @@ def get_ai_response(user_text):
             if internet_results:
                 context = "Информация из интернета:\n"
                 for i, result in enumerate(internet_results, 1):
-                    context += f"{i}. {result['title']}\n{result['body']}\n\n"
+                    url = result.get('url') or ''
+                    context += f"{i}. {result['title']}\n{result['body']}\nИсточник: {url}\n\n"
             else:
                 local_results = search_local_database(user_text)
                 if local_results:
@@ -303,6 +347,8 @@ def get_ai_response(user_text):
         ai_reply_stream(messages, on_token)
 
         answer = "".join(collected).strip()
+        global last_ai_answer
+        last_ai_answer = answer
 
         # убрать индикатор и дописать перевод строки
         tk.after(0, lambda: (
